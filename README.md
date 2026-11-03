@@ -46,7 +46,7 @@ Abre http://localhost:5173. Vite reenvía `/api` al backend local en `http://loc
 docker compose up --build
 ```
 
-- Frontend: http://localhost:80
+- Frontend: http://localhost:5173
 - API docs (Swagger): http://localhost:8000/docs
 - Health: http://localhost:8000/health
 
