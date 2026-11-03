@@ -42,7 +42,7 @@ Ambos servicios usan la base de datos indicada por `DATABASE_URL`.
 docker compose up --build
 ```
 
-- Frontend: http://localhost:80
+- Frontend: http://localhost:5173
 - API docs (Swagger): http://localhost:8000/docs
 - Health: http://localhost:8000/health
 
