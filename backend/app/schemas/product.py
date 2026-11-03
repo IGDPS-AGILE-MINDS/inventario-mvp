@@ -7,36 +7,36 @@ from app.models.product import ProductStatus
 
 
 class ProductCreate(SQLModel):
-    sku: str
-    name: str
-    description: str | None = None
+    sku: str = Field(min_length=1, max_length=60)
+    name: str = Field(min_length=1, max_length=160)
+    description: str | None = Field(default=None, max_length=1000)
     category_id: int | None = None
     supplier_id: int | None = None
     quantity: int = Field(0, ge=0)
-    unit: str = "unidad"
+    unit: str = Field(default="unidad", min_length=1, max_length=30)
     min_stock: int = Field(0, ge=0)
     purchase_price: float = Field(0, ge=0)
     sale_price: float = Field(0, ge=0)
     entry_date: date = Field(default_factory=date.today)
     expiration_date: date | None = None
-    location: str | None = None
+    location: str | None = Field(default=None, max_length=120)
     status: ProductStatus = ProductStatus.vigente
 
 
 class ProductUpdate(SQLModel):
-    sku: str | None = None
-    name: str | None = None
-    description: str | None = None
+    sku: str | None = Field(default=None, min_length=1, max_length=60)
+    name: str | None = Field(default=None, min_length=1, max_length=160)
+    description: str | None = Field(default=None, max_length=1000)
     category_id: int | None = None
     supplier_id: int | None = None
-    quantity: int | None = None
-    unit: str | None = None
-    min_stock: int | None = None
-    purchase_price: float | None = None
-    sale_price: float | None = None
+    quantity: int | None = Field(default=None, ge=0)
+    unit: str | None = Field(default=None, min_length=1, max_length=30)
+    min_stock: int | None = Field(default=None, ge=0)
+    purchase_price: float | None = Field(default=None, ge=0)
+    sale_price: float | None = Field(default=None, ge=0)
     entry_date: date | None = None
     expiration_date: date | None = None
-    location: str | None = None
+    location: str | None = Field(default=None, max_length=120)
     status: ProductStatus | None = None
 
 

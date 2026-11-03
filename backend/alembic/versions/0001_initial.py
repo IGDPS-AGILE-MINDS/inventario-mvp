@@ -1,4 +1,4 @@
-"""initial
+"""Initial baseline; schema creation starts in 0002.
 
 Revision ID: 0001
 Revises:
