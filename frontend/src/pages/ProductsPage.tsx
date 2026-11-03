@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { deleteProduct, getProducts } from '../api/products'
 import { getCategories } from '../api/categories'
 import Badge from '../components/ui/Badge'
 import ExpirationBadge from '../components/ui/ExpirationBadge'
 import Modal from '../components/ui/Modal'
 import Pagination from '../components/ui/Pagination'
-import type { Category, Paginated, Product, ProductStatus } from '../types'
+import type { Category, Paginated, Product, ProductQuery, ProductStatus } from '../types'
 
 const LIMIT = 10
 
 export default function ProductsPage() {
+  const location = useLocation()
   const [data, setData] = useState<Paginated<Product> | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const [search, setSearch] = useState('')
@@ -21,14 +22,17 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [toDelete, setToDelete] = useState<Product | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
 
-  const load = async () => {
+  useEffect(() => { if (location.state?.notice) setNotice(location.state.notice) }, [location.state])
+
+  const load = async (filters: ProductQuery = { search, category_id: categoryId, status, expiration, limit: LIMIT, offset }) => {
     setLoading(true)
     setError(null)
     try {
       const [products, cats] = await Promise.all([
-        getProducts({ search: search || undefined, category_id: categoryId, status, expiration, limit: LIMIT, offset }),
+        getProducts({ ...filters, search: filters.search || undefined, limit: LIMIT }),
         getCategories(),
       ])
       setData(products)
@@ -47,6 +51,9 @@ export default function ProductsPage() {
 
   const confirmDelete = async () => {
     if (!toDelete) return
+    setNotice(null)
+    setError(null)
+    setDeleting(true)
     try {
       await deleteProduct(toDelete.id)
       setNotice('Producto eliminado')
@@ -54,7 +61,23 @@ export default function ProductsPage() {
       load()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al eliminar')
+    } finally {
+      setDeleting(false)
     }
+  }
+
+  const searchNow = () => {
+    if (offset === 0) load()
+    else setOffset(0)
+  }
+
+  const clearFilters = () => {
+    setSearch('')
+    setCategoryId(undefined)
+    setStatus(undefined)
+    setExpiration(undefined)
+    setOffset(0)
+    load({ search: undefined, category_id: undefined, status: undefined, expiration: undefined, limit: LIMIT, offset: 0 })
   }
 
   return (
@@ -65,7 +88,7 @@ export default function ProductsPage() {
       </div>
 
       <div className="flex flex-wrap gap-3 mb-4">
-        <input className="border rounded px-3 py-2" placeholder="Buscar por nombre o SKU" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (setOffset(0), load())} />
+        <input className="border rounded px-3 py-2" aria-label="Buscar por nombre o SKU" placeholder="Buscar por nombre o SKU" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); searchNow() } }} />
         <select className="border rounded px-3 py-2" value={categoryId ?? ''} onChange={(e) => { setOffset(0); setCategoryId(e.target.value ? Number(e.target.value) : undefined) }}>
           <option value="">Todas las categorías</option>
           {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -84,15 +107,21 @@ export default function ProductsPage() {
           <option value="vencido">Vencido</option>
           <option value="sin_fecha">Sin fecha</option>
         </select>
-        <button className="border rounded px-4 py-2" onClick={() => { setOffset(0); load() }}>Buscar</button>
+        <button className="border rounded px-4 py-2" onClick={searchNow}>Buscar</button>
       </div>
 
       {notice && <p className="text-green-600 mb-3">{notice}</p>}
-      {error && <p className="text-red-600 mb-3">{error}</p>}
+      {error && <div role="alert" className="text-red-600 mb-3"><p>{error}</p><button className="underline" onClick={() => load()}>Reintentar</button></div>}
       {loading && <p className="text-gray-500">Cargando...</p>}
-      {!loading && data && data.items.length === 0 && <p className="text-gray-500">No hay productos.</p>}
 
-      {data && data.items.length > 0 && (
+      {!loading && data?.items.length === 0 && (
+        <div className="bg-white rounded-lg shadow p-6 text-center">
+          <p className="text-gray-700 mb-3">No se encontraron productos con los criterios de búsqueda.</p>
+          <button className="border rounded px-4 py-2" onClick={clearFilters}>Limpiar filtros</button>
+        </div>
+      )}
+
+      {!loading && data && data.items.length > 0 && (
         <div className="overflow-x-auto bg-white rounded-lg shadow">
           <table className="w-full text-sm">
             <thead className="bg-gray-100 text-left">
@@ -129,12 +158,14 @@ export default function ProductsPage() {
       {toDelete && (
         <Modal title="Eliminar producto" onClose={() => setToDelete(null)}>
           <p className="mb-4">¿Seguro que deseas eliminar <strong>{toDelete.name}</strong>?</p>
+          {error && <p role="alert" className="text-red-600 mb-3">{error}</p>}
           <div className="flex justify-end gap-3">
             <button className="border px-4 py-2 rounded" onClick={() => setToDelete(null)}>Cancelar</button>
-            <button className="bg-red-600 text-white px-4 py-2 rounded" onClick={confirmDelete}>Eliminar</button>
+            <button disabled={deleting} className="bg-red-600 text-white px-4 py-2 rounded disabled:opacity-50" onClick={confirmDelete}>{deleting ? 'Eliminando…' : 'Eliminar'}</button>
           </div>
         </Modal>
       )}
     </div>
   )
 }
+

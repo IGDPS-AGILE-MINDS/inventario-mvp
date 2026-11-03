@@ -1,8 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from app.db.session import get_session
 from app.models.category import Category
+from app.models.product import Product
 from app.models.base import utcnow
 from app.schemas.category import CategoryCreate, CategoryRead, CategoryUpdate
 
@@ -20,7 +23,7 @@ def create_category(data: CategoryCreate, session: Session = Depends(get_session
     session.add(category)
     try:
         session.commit()
-    except Exception:
+    except IntegrityError:
         session.rollback()
         raise HTTPException(400, "La categoría ya existe")
     session.refresh(category)
@@ -36,7 +39,11 @@ def update_category(category_id: int, data: CategoryUpdate, session: Session = D
         setattr(category, key, value)
     category.updated_at = utcnow()
     session.add(category)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(400, "La categoría ya existe")
     session.refresh(category)
     return category
 
@@ -46,5 +53,12 @@ def delete_category(category_id: int, session: Session = Depends(get_session)):
     category = session.get(Category, category_id)
     if not category:
         raise HTTPException(404, "Categoría no encontrada")
+    linked_products = session.exec(select(func.count(Product.id)).where(Product.category_id == category_id)).one()
+    if linked_products:
+        raise HTTPException(409, "No se puede eliminar la categoría porque tiene productos asociados")
     session.delete(category)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(409, "No se puede eliminar la categoría porque tiene productos asociados")

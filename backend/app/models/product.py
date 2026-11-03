@@ -24,6 +24,7 @@ class Product(SQLModel, table=True):
     unit: str = Field(default="unidad", max_length=30)
     min_stock: int = Field(default=0, ge=0)
     purchase_price: float = Field(default=0, ge=0)
+    weighted_average_cost: float | None = Field(default=None, ge=0)
     sale_price: float = Field(default=0, ge=0)
     entry_date: date = Field(default_factory=date.today)
     expiration_date: date | None = None

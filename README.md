@@ -10,31 +10,35 @@ Herramienta web para gestión de inventario. Ver `PLAN.md` para la arquitectura 
 ## Configurar el entorno
 
 ```bash
-cp .env.example .env
+Copy-Item .env.example .env
 ```
 
-Reemplaza `DATABASE_URL` por la cadena PostgreSQL proporcionada por Supabase; no uses literalmente los valores de ejemplo. Si cambias la contraseña y contiene caracteres especiales, usa la cadena URI codificada que entrega Supabase. No subas `.env` al repositorio. Para desarrollo local, deja `VITE_API_URL` vacío; Vite usa el proxy a `http://localhost:8000`. Para el build de Docker configura `VITE_API_URL` con la URL base del backend.
+Si `.env` ya existe, no lo sobrescribas. Reemplaza `DATABASE_URL` por la cadena PostgreSQL de Supabase en formato pooler de sesión (`5432`); usa literalmente el usuario que incluye la referencia del proyecto. No uses los marcadores de `.env.example`. Si la contraseña contiene caracteres especiales, usa la URI codificada que entrega Supabase. No subas `.env` al repositorio.
 
 ## Desarrollo local
 
-Backend y frontend:
+En PowerShell, desde la raíz del repositorio, abre dos terminales.
+
+Terminal 1 — backend:
 
 ```bash
 cd backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt -r requirements-dev.txt
 alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
-En otra terminal:
+Terminal 2 — frontend:
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
-Ambos servicios usan la base de datos indicada por `DATABASE_URL`.
+Abre http://localhost:5173. Vite reenvía `/api` al backend local en `http://localhost:8000`; no configures `VITE_API_URL` para este modo. El backend lee el `.env` de la raíz incluso al ejecutarlo desde `backend/`. Tanto el backend local como Render usan la Supabase indicada por `DATABASE_URL`, así que ambos ven y modifican los mismos datos.
 
 ## Levantar con Docker Compose
 
@@ -50,7 +54,7 @@ Este modo usa `DATABASE_URL`; no levanta una base local y conecta a Supabase.
 
 ## Despliegue gratis: Supabase + Render + Vercel
 
-1. **Supabase:** crea un proyecto PostgreSQL y copia la cadena de conexión desde los ajustes de base de datos. Usa la conexión recomendada para clientes persistentes/servidores, habilita SSL y reemplaza los valores de ejemplo. Local y Render pueden usar esta misma URL.
+1. **Supabase:** crea un proyecto PostgreSQL y copia la cadena de conexión de Session Pooler desde Connect. Usa el puerto `5432`; local y Render pueden usar esta URL.
 2. **Render:** crea un Web Service desde `backend`, runtime Docker y Dockerfile `backend/Dockerfile`. Configura `DATABASE_URL` con la URL de Supabase y `CORS_ORIGINS` con `http://localhost:5173` más la URL final de Vercel, separadas por coma. El Dockerfile aplica `alembic upgrade head` antes de iniciar FastAPI. Health check path: `/health`.
 3. **Vercel:** importa el repositorio con Root Directory `frontend`, framework Vite y build `npm run build`. Añade `VITE_API_URL` con la URL HTTPS de Render, sin `/api/v1` (por ejemplo `https://tu-api.onrender.com`), y despliega de nuevo tras cada cambio de variable.
 4. Cuando Vercel asigne el dominio, añade ese origen exacto a `CORS_ORIGINS` de Render y vuelve a desplegar el backend.

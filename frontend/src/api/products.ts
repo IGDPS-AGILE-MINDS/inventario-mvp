@@ -16,9 +16,10 @@ export async function getProduct(id: number): Promise<Product> {
   return data
 }
 
-export type ProductInput = Omit<Product, 'id' | 'created_at' | 'updated_at'>
+export type ProductInput = Omit<Product, 'id' | 'created_at' | 'updated_at' | 'weighted_average_cost' | 'expiration_status'>
+export type ProductCreateInput = Omit<ProductInput, 'purchase_price'> & { purchase_price: number | null }
 
-export async function createProduct(input: Partial<ProductInput>): Promise<Product> {
+export async function createProduct(input: ProductCreateInput): Promise<Product> {
   const { data } = await api.post<Product>('/products/', input)
   return data
 }

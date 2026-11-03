@@ -11,14 +11,16 @@ const links = [
 
 export default function Sidebar() {
   return (
-    <aside className="w-56 bg-gray-900 text-gray-200 min-h-screen p-4 flex flex-col gap-1">
-      <h1 className="text-xl font-bold mb-6 text-white">Inventario</h1>
-      {links.map((l) => (
-        <NavLink key={l.to} to={l.to} end={l.to === '/'}
-          className={({ isActive }) => `px-3 py-2 rounded ${isActive ? 'bg-gray-700 text-white' : 'hover:bg-gray-800'}`}>
-          {l.label}
-        </NavLink>
-      ))}
+    <aside className="bg-gray-900 text-gray-200 p-4 md:w-56 md:min-h-screen">
+      <h1 className="text-xl font-bold mb-3 md:mb-6 text-white">Inventario</h1>
+      <nav aria-label="Navegación principal" className="flex flex-wrap md:flex-col gap-1">
+        {links.map((l) => (
+          <NavLink key={l.to} to={l.to} end={l.to === '/'}
+            className={({ isActive }) => `px-3 py-2 rounded ${isActive ? 'bg-gray-700 text-white' : 'hover:bg-gray-800'}`}>
+            {l.label}
+          </NavLink>
+        ))}
+      </nav>
     </aside>
   )
 }

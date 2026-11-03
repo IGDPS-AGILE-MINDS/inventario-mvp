@@ -1,5 +1,5 @@
 def _seed_product(client, quantity=50, sku="MOV-001"):
-    response = client.post("/api/v1/products/", json={"sku": sku, "name": "Producto", "quantity": quantity, "min_stock": 10})
+    response = client.post("/api/v1/products/", json={"sku": sku, "name": "Producto", "quantity": quantity, "min_stock": 10, "purchase_price": 2 if quantity > 0 else None})
     return response.json()
 
 

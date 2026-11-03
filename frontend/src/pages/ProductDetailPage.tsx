@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getProduct } from '../api/products'
 import Badge from '../components/ui/Badge'
 import ExpirationBadge from '../components/ui/ExpirationBadge'
@@ -7,6 +7,7 @@ import type { Product } from '../types'
 
 export default function ProductDetailPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const [product, setProduct] = useState<Product | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -14,13 +15,14 @@ export default function ProductDetailPage() {
     if (id) getProduct(Number(id)).then(setProduct).catch((e) => setError(e.message))
   }, [id])
 
-  if (error) return <p className="text-red-600">{error}</p>
-  if (!product) return <p>Cargando...</p>
+  if (error) return <div><p role="alert" className="text-red-600 mb-3">{error}</p><button className="text-blue-600" onClick={() => navigate('/productos')}>Volver al listado</button></div>
+  if (!product) return <p role="status" className="text-gray-500">Cargando producto…</p>
 
   const rows: [string, React.ReactNode][] = [
     ['SKU', product.sku], ['Nombre', product.name], ['Descripción', product.description ?? '—'],
     ['Cantidad', `${product.quantity} ${product.unit}`], ['Stock mínimo', product.min_stock],
-    ['Precio compra', `$${product.purchase_price}`], ['Precio venta', `$${product.sale_price}`],
+    ['Costo promedio ponderado', product.weighted_average_cost === null ? 'Aún no establecido' : `$${product.weighted_average_cost}`],
+    ['Costo unitario inicial', `$${product.purchase_price}`], ['Precio de venta', `$${product.sale_price}`],
     ['Ingreso', product.entry_date], ['Vencimiento', <span className="flex items-center gap-2"><ExpirationBadge status={product.expiration_status} />{product.expiration_date ?? '—'}</span>],
     ['Ubicación', product.location ?? '—'], ['Estado', <Badge status={product.status} />],
     ['Creado', product.created_at], ['Actualizado', product.updated_at],

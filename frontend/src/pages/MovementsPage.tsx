@@ -20,6 +20,7 @@ export default function MovementsPage() {
   const [type, setType] = useState<MovementType>('IN')
   const [quantity, setQuantity] = useState(1)
   const [note, setNote] = useState('')
+  const [saving, setSaving] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -45,6 +46,8 @@ export default function MovementsPage() {
     setError(null)
     if (!productId) { setError('Selecciona un producto'); return }
     if (quantity < 1) { setError('La cantidad debe ser mayor a 0'); return }
+    setNotice(null)
+    setSaving(true)
     try {
       await registerMovement(type, { product_id: Number(productId), quantity, note: note || undefined })
       setNotice('Movimiento registrado')
@@ -54,6 +57,8 @@ export default function MovementsPage() {
       load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al registrar')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -73,7 +78,7 @@ export default function MovementsPage() {
       </div>
 
       {notice && <p className="text-green-600 mb-3">{notice}</p>}
-      {error && <p className="text-red-600 mb-3">{error}</p>}
+      {error && !showForm && <div role="alert" className="text-red-600 mb-3"><p>{error}</p>{!loading && <button className="underline" onClick={load}>Reintentar</button>}</div>}
       {loading && <p className="text-gray-500">Cargando...</p>}
 
       {data && data.items.length === 0 && !loading && <p className="text-gray-500">No hay movimientos.</p>}
@@ -109,6 +114,7 @@ export default function MovementsPage() {
       {showForm && (
         <Modal title="Registrar movimiento" onClose={() => setShowForm(false)}>
           <form onSubmit={submit} className="flex flex-col gap-3">
+            {error && <p role="alert" className="text-red-600">{error}</p>}
             <label className="text-sm flex flex-col">Producto
               <select className="border rounded px-3 py-2 mt-1" value={productId} onChange={(e) => setProductId(e.target.value ? Number(e.target.value) : '')}>
                 <option value="">Selecciona...</option>
@@ -129,7 +135,7 @@ export default function MovementsPage() {
             </label>
             <div className="flex justify-end gap-3 mt-2">
               <button type="button" className="border px-4 py-2 rounded" onClick={() => setShowForm(false)}>Cancelar</button>
-              <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">Registrar</button>
+              <button disabled={saving} type="submit" className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50">{saving ? 'Guardando…' : 'Registrar'}</button>
             </div>
           </form>
         </Modal>

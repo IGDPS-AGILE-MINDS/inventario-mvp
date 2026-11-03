@@ -15,15 +15,19 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true)
+    setError(null)
     getDashboardSummary()
       .then(setData)
       .catch((e) => setError(e instanceof Error ? e.message : 'Error al cargar'))
       .finally(() => setLoading(false))
-  }, [])
+  }
+
+  useEffect(() => { load() }, [])
 
   if (loading) return <p className="text-gray-500">Cargando dashboard...</p>
-  if (error) return <p className="text-red-600">{error}</p>
+  if (error) return <div role="alert"><p className="text-red-600">{error}</p><button className="text-blue-600 underline" onClick={load}>Reintentar</button></div>
   if (!data) return null
 
   return (

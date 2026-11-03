@@ -5,9 +5,9 @@ from sqlmodel import SQLModel
 
 
 class MovementCreate(SQLModel):
-    product_id: int
+    product_id: int = Field(ge=1)
     quantity: int = Field(gt=0)
-    note: str | None = None
+    note: str | None = Field(default=None, max_length=500)
 
 
 class MovementRead(SQLModel):

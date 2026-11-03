@@ -30,6 +30,7 @@ export interface Product {
   unit: string
   min_stock: number
   purchase_price: number
+  weighted_average_cost: number | null
   sale_price: number
   entry_date: string
   expiration_date: string | null

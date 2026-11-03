@@ -2,11 +2,14 @@ from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, or_
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from app.db.session import get_session
 from app.models.base import utcnow
 from app.models.product import Product, ProductStatus
+from app.models.category import Category
+from app.models.supplier import Supplier
 from app.schemas.product import ProductCreate, ProductList, ProductRead, ProductUpdate
 from app.services.expiration import expiration_status, get_warning_days
 
@@ -65,7 +68,14 @@ def list_products(
 
 @router.post("/", response_model=ProductRead, status_code=201)
 def create_product(data: ProductCreate, session: Session = Depends(get_session)):
-    product = Product.model_validate(data)
+    if data.category_id is not None and not session.get(Category, data.category_id):
+        raise HTTPException(400, "La categoría seleccionada no existe")
+    if data.supplier_id is not None and not session.get(Supplier, data.supplier_id):
+        raise HTTPException(400, "El proveedor seleccionado no existe")
+    product = Product.model_validate(data, update={
+        "purchase_price": data.purchase_price or 0,
+        "weighted_average_cost": data.purchase_price if data.quantity > 0 else None,
+    })
     if product.entry_date is None:
         from datetime import date
 
@@ -73,7 +83,7 @@ def create_product(data: ProductCreate, session: Session = Depends(get_session))
     session.add(product)
     try:
         session.commit()
-    except Exception:
+    except IntegrityError:
         session.rollback()
         raise HTTPException(400, "El SKU ya existe")
     session.refresh(product)
@@ -93,11 +103,20 @@ def update_product(product_id: int, data: ProductUpdate, session: Session = Depe
     product = session.get(Product, product_id)
     if not product:
         raise HTTPException(404, "Producto no encontrado")
-    for key, value in data.model_dump(exclude_unset=True).items():
+    changes = data.model_dump(exclude_unset=True)
+    if changes.get("category_id") is not None and not session.get(Category, changes["category_id"]):
+        raise HTTPException(400, "La categoría seleccionada no existe")
+    if changes.get("supplier_id") is not None and not session.get(Supplier, changes["supplier_id"]):
+        raise HTTPException(400, "El proveedor seleccionado no existe")
+    for key, value in changes.items():
         setattr(product, key, value)
     product.updated_at = utcnow()
     session.add(product)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(400, "El SKU ya existe")
     session.refresh(product)
     return _with_expiration(session, product)
 
