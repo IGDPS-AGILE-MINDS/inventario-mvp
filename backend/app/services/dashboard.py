@@ -10,7 +10,7 @@ from app.services.expiration import get_warning_days
 
 class MovementSummary(SQLModel):
     id: int
-    product_id: int
+    product_id: int | None
     product_name: str | None
     movement_type: str
     quantity: int
@@ -51,10 +51,10 @@ def get_dashboard_summary(session: Session) -> DashboardSummary:
     ).all()
     last = []
     for m in rows:
-        product = session.get(Product, m.product_id)
+        product = session.get(Product, m.product_id) if m.product_id is not None else None
         last.append(MovementSummary(
             id=m.id, product_id=m.product_id,
-            product_name=product.name if product else None,
+            product_name=m.product_name or (product.name if product else None),
             movement_type=m.movement_type, quantity=m.quantity,
             created_at=m.created_at.isoformat(),
         ))

@@ -127,4 +127,8 @@ def delete_product(product_id: int, session: Session = Depends(get_session)):
     if not product:
         raise HTTPException(404, "Producto no encontrado")
     session.delete(product)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(409, "No se puede eliminar el producto porque tiene movimientos asociados")

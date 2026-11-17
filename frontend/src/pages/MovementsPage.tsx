@@ -4,6 +4,7 @@ import { getProducts } from '../api/products'
 import Modal from '../components/ui/Modal'
 import Pagination from '../components/ui/Pagination'
 import type { MovementList, MovementType, Product } from '../types'
+import { formatMoney } from '../utils/formatMoney'
 
 const LIMIT = 10
 
@@ -18,7 +19,9 @@ export default function MovementsPage() {
   const [showForm, setShowForm] = useState(false)
   const [productId, setProductId] = useState<number | ''>('')
   const [type, setType] = useState<MovementType>('IN')
-  const [quantity, setQuantity] = useState(1)
+  const [quantity, setQuantity] = useState('1')
+  const [unitCost, setUnitCost] = useState('')
+  const [reason, setReason] = useState<'consumo' | 'perdida' | 'ajuste'>('consumo')
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -45,15 +48,18 @@ export default function MovementsPage() {
     e.preventDefault()
     setError(null)
     if (!productId) { setError('Selecciona un producto'); return }
-    if (quantity < 1) { setError('La cantidad debe ser mayor a 0'); return }
+    const parsedQuantity = Number(quantity)
+    if (quantity === '' || !Number.isInteger(parsedQuantity) || parsedQuantity < 1) { setError('La cantidad debe ser un entero mayor a 0'); return }
+    if (type === 'IN' && (unitCost === '' || !Number.isFinite(Number(unitCost)) || Number(unitCost) < 0)) { setError('Indica un costo unitario válido (mayor o igual a 0)'); return }
     setNotice(null)
     setSaving(true)
     try {
-      await registerMovement(type, { product_id: Number(productId), quantity, note: note || undefined })
+      await registerMovement(type, { product_id: Number(productId), quantity: parsedQuantity, note: note || undefined, ...(type === 'IN' ? { unit_cost: Number(unitCost) } : { reason }) })
       setNotice('Movimiento registrado')
       setShowForm(false)
       setNote('')
-      setQuantity(1)
+      setQuantity('1')
+      setUnitCost('')
       load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al registrar')
@@ -86,7 +92,7 @@ export default function MovementsPage() {
         <div className="overflow-x-auto bg-white rounded-lg shadow">
           <table className="w-full text-sm">
             <thead className="bg-gray-100 text-left">
-              <tr><th className="p-3">Fecha</th><th className="p-3">Producto</th><th className="p-3">Tipo</th><th className="p-3">Cantidad</th><th className="p-3">Anterior</th><th className="p-3">Nuevo</th><th className="p-3">Nota</th></tr>
+              <tr><th className="p-3">Fecha</th><th className="p-3">Producto</th><th className="p-3">Tipo</th><th className="p-3">Cantidad</th><th className="p-3">Anterior</th><th className="p-3">Nuevo</th><th className="p-3">Costo unitario</th><th className="p-3">Costo total</th><th className="p-3">Nota</th></tr>
             </thead>
             <tbody>
               {data.items.map((m) => (
@@ -95,12 +101,14 @@ export default function MovementsPage() {
                   <td className="p-3">{m.product_name ?? m.product_id}</td>
                   <td className="p-3">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${m.movement_type === 'IN' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                      {m.movement_type === 'IN' ? 'Entrada' : 'Salida'}
+                      {m.movement_type === 'IN' ? 'Entrada' : `Salida · ${m.reason}`}
                     </span>
                   </td>
                   <td className="p-3">{m.quantity}</td>
                   <td className="p-3">{m.previous_quantity}</td>
                   <td className="p-3">{m.new_quantity}</td>
+                  <td className="p-3">{m.unit_cost === null ? '—' : formatMoney(m.unit_cost)}</td>
+                  <td className="p-3">{m.total_cost === null ? '—' : formatMoney(m.total_cost)}</td>
                   <td className="p-3">{m.note ?? '—'}</td>
                 </tr>
               ))}
@@ -112,7 +120,7 @@ export default function MovementsPage() {
       {data && <Pagination total={data.total} limit={LIMIT} offset={offset} onPage={setOffset} />}
 
       {showForm && (
-        <Modal title="Registrar movimiento" onClose={() => setShowForm(false)}>
+        <Modal title={type === 'IN' ? 'Registrar entrada de compra' : 'Registrar salida no comercial'} onClose={() => setShowForm(false)}>
           <form onSubmit={submit} className="flex flex-col gap-3">
             {error && <p role="alert" className="text-red-600">{error}</p>}
             <label className="text-sm flex flex-col">Producto
@@ -121,14 +129,22 @@ export default function MovementsPage() {
                 {products.map((p) => <option key={p.id} value={p.id}>{p.name} (stock: {p.quantity})</option>)}
               </select>
             </label>
-            <label className="text-sm flex flex-col">Tipo
+            <label className="text-sm flex flex-col">Operación
               <select className="border rounded px-3 py-2 mt-1" value={type} onChange={(e) => setType(e.target.value as MovementType)}>
                 <option value="IN">Entrada</option>
                 <option value="OUT">Salida</option>
               </select>
             </label>
+            {type === 'IN' && <label className="text-sm flex flex-col">Costo unitario de adquisición
+              <input type="number" step="0.01" min={0} required className="border rounded px-3 py-2 mt-1" value={unitCost} onChange={(e) => setUnitCost(e.target.value)} />
+            </label>}
+            {type === 'OUT' && <label className="text-sm flex flex-col">Motivo
+              <select className="border rounded px-3 py-2 mt-1" value={reason} onChange={(e) => setReason(e.target.value as typeof reason)}>
+                <option value="consumo">Consumo</option><option value="perdida">Pérdida</option><option value="ajuste">Ajuste autorizado</option>
+              </select>
+            </label>}
             <label className="text-sm flex flex-col">Cantidad
-              <input type="number" min={1} className="border rounded px-3 py-2 mt-1" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} />
+              <input type="number" min={1} step={1} className="border rounded px-3 py-2 mt-1" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
             </label>
             <label className="text-sm flex flex-col">Nota
               <input className="border rounded px-3 py-2 mt-1" value={note} onChange={(e) => setNote(e.target.value)} />
