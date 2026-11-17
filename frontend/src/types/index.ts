@@ -61,12 +61,15 @@ export type MovementType = 'IN' | 'OUT'
 
 export interface Movement {
   id: number
-  product_id: number
+  product_id: number | null
   product_name: string | null
   movement_type: MovementType
   quantity: number
   previous_quantity: number
   new_quantity: number
+  unit_cost: number | null
+  total_cost: number | null
+  reason: string
   note: string | null
   created_at: string
 }

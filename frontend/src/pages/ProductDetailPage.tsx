@@ -4,6 +4,7 @@ import { getProduct } from '../api/products'
 import Badge from '../components/ui/Badge'
 import ExpirationBadge from '../components/ui/ExpirationBadge'
 import type { Product } from '../types'
+import { formatMoney } from '../utils/formatMoney'
 
 export default function ProductDetailPage() {
   const { id } = useParams()
@@ -21,8 +22,8 @@ export default function ProductDetailPage() {
   const rows: [string, React.ReactNode][] = [
     ['SKU', product.sku], ['Nombre', product.name], ['Descripción', product.description ?? '—'],
     ['Cantidad', `${product.quantity} ${product.unit}`], ['Stock mínimo', product.min_stock],
-    ['Costo promedio ponderado', product.weighted_average_cost === null ? 'Aún no establecido' : `$${product.weighted_average_cost}`],
-    ['Costo unitario inicial', `$${product.purchase_price}`], ['Precio de venta', `$${product.sale_price}`],
+    ['Costo promedio ponderado', product.weighted_average_cost === null ? 'Aún no establecido' : formatMoney(product.weighted_average_cost)],
+    ['Costo unitario inicial', formatMoney(product.purchase_price)], ['Precio de venta', formatMoney(product.sale_price)],
     ['Ingreso', product.entry_date], ['Vencimiento', <span className="flex items-center gap-2"><ExpirationBadge status={product.expiration_status} />{product.expiration_date ?? '—'}</span>],
     ['Ubicación', product.location ?? '—'], ['Estado', <Badge status={product.status} />],
     ['Creado', product.created_at], ['Actualizado', product.updated_at],

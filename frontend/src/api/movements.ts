@@ -9,7 +9,7 @@ export async function getMovements(params: { product_id?: number; movement_type?
   return data
 }
 
-export async function registerMovement(type: MovementType, input: { product_id: number; quantity: number; note?: string }): Promise<Movement> {
+export async function registerMovement(type: MovementType, input: { product_id: number; quantity: number; note?: string; unit_cost?: number; reason?: 'consumo' | 'perdida' | 'ajuste' }): Promise<Movement> {
   const { data } = await api.post<Movement>(`/movements/${type === 'IN' ? 'in' : 'out'}`, input)
   return data
 }

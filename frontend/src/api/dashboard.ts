@@ -2,7 +2,7 @@ import { api } from './client'
 
 export interface MovementSummary {
   id: number
-  product_id: number
+  product_id: number | null
   product_name: string | null
   movement_type: 'IN' | 'OUT'
   quantity: number
