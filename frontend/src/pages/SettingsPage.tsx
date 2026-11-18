@@ -22,6 +22,10 @@ export default function SettingsPage() {
     e.preventDefault()
     setError(null)
     setNotice(null)
+    if (!Number.isInteger(days) || days < 0 || days > 365) {
+      setError('El valor debe estar entre 0 y 365 días')
+      return
+    }
     setSaving(true)
     try {
       const s = await updateSettings(days)
@@ -42,7 +46,8 @@ export default function SettingsPage() {
       {loading ? <p role="status" className="text-gray-500">Cargando configuración…</p> : <form onSubmit={submit} className="bg-white p-6 rounded-lg shadow flex flex-col gap-4">
         <label className="text-sm flex flex-col">
           Días de anticipación para "próximo a vencer"
-          <input type="number" min={0} max={365} required className="border rounded px-3 py-2 mt-1" value={days} onChange={(e) => setDays(Number(e.target.value))} />
+          <input type="number" min={0} max={365} step={1} required className="border rounded px-3 py-2 mt-1" value={days} onChange={(e) => setDays(Number(e.target.value))} />
+          <span className="text-gray-500 mt-1">Entre 0 y 365 días. Valor inicial: 30.</span>
         </label>
         <button disabled={saving} type="submit" className="bg-blue-600 text-white px-4 py-2 rounded self-start disabled:opacity-50">{saving ? 'Guardando…' : 'Guardar'}</button>
       </form>}

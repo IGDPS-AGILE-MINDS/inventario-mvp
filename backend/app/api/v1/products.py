@@ -16,9 +16,9 @@ from app.services.expiration import expiration_status, get_warning_days
 router = APIRouter(prefix="/products", tags=["products"])
 
 
-def _with_expiration(session: Session, product: Product) -> ProductRead:
+def _with_expiration(session: Session, product: Product, warning_days: int) -> ProductRead:
     read = ProductRead.model_validate(product, from_attributes=True)
-    read.expiration_status = expiration_status(product.expiration_date, get_warning_days(session))
+    read.expiration_status = expiration_status(product.expiration_date, warning_days)
     return read
 
 
@@ -34,6 +34,7 @@ def list_products(
 ):
     query = select(Product)
     count_query = select(func.count(Product.id))
+    warning_days = get_warning_days(session)
 
     conditions = []
     if search:
@@ -45,7 +46,6 @@ def list_products(
         conditions.append(Product.status == status)
     if expiration is not None:
         today = date.today()
-        warning_days = get_warning_days(session)
         limit_date = today + timedelta(days=warning_days)
         if expiration == "vencido":
             conditions.append(Product.expiration_date < today)
@@ -63,7 +63,7 @@ def list_products(
 
     total = session.exec(count_query).one()
     items = session.exec(query.order_by(Product.name).offset(offset).limit(limit)).all()
-    return ProductList(items=[_with_expiration(session, p) for p in items], total=total, limit=limit, offset=offset)
+    return ProductList(items=[_with_expiration(session, p, warning_days) for p in items], total=total, limit=limit, offset=offset)
 
 
 @router.post("/", response_model=ProductRead, status_code=201)
@@ -87,7 +87,7 @@ def create_product(data: ProductCreate, session: Session = Depends(get_session))
         session.rollback()
         raise HTTPException(400, "El SKU ya existe")
     session.refresh(product)
-    return _with_expiration(session, product)
+    return _with_expiration(session, product, get_warning_days(session))
 
 
 @router.get("/{product_id}", response_model=ProductRead)
@@ -95,7 +95,7 @@ def get_product(product_id: int, session: Session = Depends(get_session)):
     product = session.get(Product, product_id)
     if not product:
         raise HTTPException(404, "Producto no encontrado")
-    return _with_expiration(session, product)
+    return _with_expiration(session, product, get_warning_days(session))
 
 
 @router.put("/{product_id}", response_model=ProductRead)
@@ -118,7 +118,7 @@ def update_product(product_id: int, data: ProductUpdate, session: Session = Depe
         session.rollback()
         raise HTTPException(400, "El SKU ya existe")
     session.refresh(product)
-    return _with_expiration(session, product)
+    return _with_expiration(session, product, get_warning_days(session))
 
 
 @router.delete("/{product_id}", status_code=204)

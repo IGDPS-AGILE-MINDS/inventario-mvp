@@ -80,6 +80,8 @@ export default function ProductsPage() {
     load({ search: undefined, category_id: undefined, status: undefined, expiration: undefined, limit: LIMIT, offset: 0 })
   }
 
+  const hasFilters = Boolean(search || categoryId !== undefined || status || expiration)
+
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
@@ -108,6 +110,7 @@ export default function ProductsPage() {
           <option value="sin_fecha">Sin fecha</option>
         </select>
         <button className="border rounded px-4 py-2" onClick={searchNow}>Buscar</button>
+        {hasFilters && <button className="border rounded px-4 py-2" onClick={clearFilters}>Limpiar filtros</button>}
       </div>
 
       {notice && <p className="text-green-600 mb-3">{notice}</p>}
@@ -116,8 +119,7 @@ export default function ProductsPage() {
 
       {!loading && data?.items.length === 0 && (
         <div className="bg-white rounded-lg shadow p-6 text-center">
-          <p className="text-gray-700 mb-3">No se encontraron productos con los criterios de búsqueda.</p>
-          <button className="border rounded px-4 py-2" onClick={clearFilters}>Limpiar filtros</button>
+          <p className="text-gray-700">No se encontraron productos con los criterios de búsqueda.</p>
         </div>
       )}
 
