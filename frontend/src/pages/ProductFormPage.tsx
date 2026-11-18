@@ -63,33 +63,38 @@ export default function ProductFormPage() {
     const minStock = Number(form.min_stock)
     const salePrice = Number(form.sale_price)
     const initialCost = form.purchase_price === '' ? null : Number(form.purchase_price)
-    if (![quantity, minStock, salePrice, ...(initialCost === null ? [] : [initialCost])].every((value) => Number.isFinite(value) && value >= 0)) {
+    if (![minStock, salePrice, ...(!id && initialCost !== null ? [initialCost] : [])].every((value) => Number.isFinite(value) && value >= 0)) {
       setError('Cantidad, stock mínimo y precios deben ser números iguales o mayores que cero')
       return
     }
-    if (!Number.isInteger(quantity) || !Number.isInteger(minStock)) {
+    if ((!id && !Number.isInteger(quantity)) || !Number.isInteger(minStock)) {
       setError('La cantidad y el stock mínimo deben ser números enteros')
       return
     }
-    if (quantity > 0 && initialCost === null) {
+    if (!id && quantity > 0 && initialCost === null) {
       setError('El costo unitario inicial es obligatorio si registras existencias')
       return
     }
     const payload = {
-      ...form,
       sku: form.sku.trim(), name: form.name.trim(),
       category_id: form.category_id === '' ? null : Number(form.category_id),
       supplier_id: form.supplier_id === '' ? null : Number(form.supplier_id),
       description: form.description || null,
       expiration_date: form.expiration_date || null,
       location: form.location || null,
-      quantity, min_stock: minStock, purchase_price: initialCost, sale_price: salePrice,
-      status: form.status as Product['status'],
+      unit: form.unit.trim(),
+      min_stock: minStock, sale_price: salePrice,
+      entry_date: form.entry_date,
     }
     setSaving(true)
     try {
-      if (id) await updateProduct(Number(id), { ...payload, purchase_price: initialCost ?? 0 })
-      else await createProduct(payload)
+      if (id) await updateProduct(Number(id), payload)
+      else await createProduct({
+        ...payload,
+        quantity,
+        purchase_price: initialCost,
+        status: form.status as Product['status'],
+      })
       navigate('/productos', { state: { notice: id ? 'Producto actualizado' : 'Producto creado' } })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar el producto')
@@ -121,20 +126,21 @@ export default function ProductFormPage() {
             {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </label>
-        <label className="flex flex-col text-sm">Cantidad inicial<input type="number" min={0} step={1} required className="border rounded px-3 py-2 mt-1" value={form.quantity} onChange={(e) => set('quantity', e.target.value)} /></label>
+        {!id && <label className="flex flex-col text-sm">Cantidad inicial<input type="number" min={0} step={1} required className="border rounded px-3 py-2 mt-1" value={form.quantity} onChange={(e) => set('quantity', e.target.value)} /></label>}
         <label className="flex flex-col text-sm">Unidad<input required maxLength={30} className="border rounded px-3 py-2 mt-1" value={form.unit} onChange={(e) => set('unit', e.target.value)} /></label>
         <label className="flex flex-col text-sm">Stock mínimo<input type="number" min={0} step={1} required className="border rounded px-3 py-2 mt-1" value={form.min_stock} onChange={(e) => set('min_stock', e.target.value)} /></label>
-        <label className="flex flex-col text-sm">Costo unitario inicial{Number(form.quantity) > 0 ? ' *' : ''}<input type="number" step="0.01" min={0} required={Number(form.quantity) > 0} className="border rounded px-3 py-2 mt-1" value={form.purchase_price} onChange={(e) => set('purchase_price', e.target.value)} /></label>
+        {!id && <label className="flex flex-col text-sm">Costo unitario inicial{Number(form.quantity) > 0 ? ' *' : ''}<input type="number" step="0.01" min={0} required={Number(form.quantity) > 0} className="border rounded px-3 py-2 mt-1" value={form.purchase_price} onChange={(e) => set('purchase_price', e.target.value)} /></label>}
+        {id && <p className="md:col-span-2 text-sm text-gray-600">Las existencias y el costo promedio ponderado solo se actualizan mediante movimientos de inventario.</p>}
         <label className="flex flex-col text-sm">Precio de venta<input type="number" step="0.01" min={0} required className="border rounded px-3 py-2 mt-1" value={form.sale_price} onChange={(e) => set('sale_price', e.target.value)} /></label>
         <label className="flex flex-col text-sm">Fecha de ingreso<input type="date" required className="border rounded px-3 py-2 mt-1" value={form.entry_date} onChange={(e) => set('entry_date', e.target.value)} /></label>
         <label className="flex flex-col text-sm">Fecha de vencimiento<input type="date" className="border rounded px-3 py-2 mt-1" value={form.expiration_date} onChange={(e) => set('expiration_date', e.target.value)} /></label>
         <label className="flex flex-col text-sm">Ubicación<input maxLength={120} className="border rounded px-3 py-2 mt-1" value={form.location} onChange={(e) => set('location', e.target.value)} /></label>
-        <label className="flex flex-col text-sm">Estado
+        {!id && <label className="flex flex-col text-sm">Estado
           <select className="border rounded px-3 py-2 mt-1" value={form.status} onChange={(e) => set('status', e.target.value)}>
             <option value="vigente">Vigente</option><option value="proximo_a_vencer">Próximo a vencer</option>
             <option value="vencido">Vencido</option><option value="agotado">Agotado</option>
           </select>
-        </label>
+        </label>}
         <div className="md:col-span-2 flex justify-end gap-3 mt-2">
           <button type="button" className="border px-4 py-2 rounded" onClick={() => navigate('/productos')}>Cancelar</button>
           <button disabled={saving} className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50">{saving ? 'Guardando…' : 'Guardar'}</button>

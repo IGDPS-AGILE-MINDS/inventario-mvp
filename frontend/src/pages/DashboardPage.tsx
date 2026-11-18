@@ -6,6 +6,7 @@ const cards = [
   { key: 'total_products', label: 'Productos registrados', color: 'bg-blue-100 text-blue-800' },
   { key: 'total_units', label: 'Unidades disponibles', color: 'bg-indigo-100 text-indigo-800' },
   { key: 'low_stock', label: 'Stock bajo', color: 'bg-orange-100 text-orange-800' },
+  { key: 'out_of_stock', label: 'Agotados', color: 'bg-gray-200 text-gray-800' },
   { key: 'expiring_soon', label: 'Próximos a vencer', color: 'bg-yellow-100 text-yellow-800' },
   { key: 'expired', label: 'Vencidos', color: 'bg-red-100 text-red-800' },
 ] as const
@@ -34,7 +35,7 @@ export default function DashboardPage() {
     <div>
       <h2 className="text-xl font-semibold mb-4">Dashboard</h2>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
         {cards.map((c) => (
           <div key={c.key} className={`rounded-lg p-4 ${c.color}`}>
             <p className="text-3xl font-bold">{data[c.key].toLocaleString()}</p>

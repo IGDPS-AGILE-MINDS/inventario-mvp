@@ -30,5 +30,6 @@ class Product(SQLModel, table=True):
     expiration_date: date | None = None
     location: str | None = Field(default=None, max_length=120)
     status: str = Field(default=ProductStatus.vigente.value, max_length=30)
+    is_active: bool = Field(default=True, nullable=False)
     created_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime = Field(default_factory=utcnow)

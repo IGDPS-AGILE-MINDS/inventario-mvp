@@ -18,6 +18,8 @@ def register_movement(
         ).scalar_one_or_none()
         if not product:
             raise HTTPException(404, "Producto no encontrado")
+        if not product.is_active:
+            raise HTTPException(409, "El producto está desactivado y no admite nuevos movimientos")
 
         previous = product.quantity
         if movement_type == MovementType.OUT and quantity > previous:

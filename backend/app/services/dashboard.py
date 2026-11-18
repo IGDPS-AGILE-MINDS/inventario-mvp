@@ -21,6 +21,7 @@ class DashboardSummary(SQLModel):
     total_products: int
     total_units: int
     low_stock: int
+    out_of_stock: int
     expiring_soon: int
     expired: int
     last_movements: list[MovementSummary]
@@ -30,7 +31,14 @@ def get_dashboard_summary(session: Session) -> DashboardSummary:
     total_products = session.exec(select(func.count(Product.id))).one()
     total_units = session.exec(select(func.coalesce(func.sum(Product.quantity), 0))).one()
     low_stock = session.exec(
-        select(func.count(Product.id)).where(Product.quantity <= Product.min_stock)
+        select(func.count(Product.id)).where(
+            Product.is_active.is_(True),
+            Product.quantity > 0,
+            Product.quantity <= Product.min_stock,
+        )
+    ).one()
+    out_of_stock = session.exec(
+        select(func.count(Product.id)).where(Product.is_active.is_(True), Product.quantity == 0)
     ).one()
 
     today = date.today()
@@ -60,5 +68,6 @@ def get_dashboard_summary(session: Session) -> DashboardSummary:
         ))
     return DashboardSummary(
         total_products=total_products, total_units=total_units, low_stock=low_stock,
+        out_of_stock=out_of_stock,
         expiring_soon=expiring_soon, expired=expired, last_movements=last,
     )

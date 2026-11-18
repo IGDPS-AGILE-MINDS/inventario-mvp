@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { deleteProduct, getProducts } from '../api/products'
+import { deactivateProduct, getProducts } from '../api/products'
 import { getCategories } from '../api/categories'
 import Badge from '../components/ui/Badge'
 import ExpirationBadge from '../components/ui/ExpirationBadge'
+import StockConditionBadge from '../components/ui/StockConditionBadge'
 import Modal from '../components/ui/Modal'
 import Pagination from '../components/ui/Pagination'
 import type { Category, Paginated, Product, ProductQuery, ProductStatus } from '../types'
@@ -18,6 +19,7 @@ export default function ProductsPage() {
   const [categoryId, setCategoryId] = useState<number | undefined>()
   const [status, setStatus] = useState<ProductStatus | undefined>()
   const [expiration, setExpiration] = useState<string | undefined>()
+  const [isActive, setIsActive] = useState<boolean | undefined>()
   const [offset, setOffset] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -27,7 +29,7 @@ export default function ProductsPage() {
 
   useEffect(() => { if (location.state?.notice) setNotice(location.state.notice) }, [location.state])
 
-  const load = async (filters: ProductQuery = { search, category_id: categoryId, status, expiration, limit: LIMIT, offset }) => {
+  const load = async (filters: ProductQuery = { search, category_id: categoryId, status, expiration, is_active: isActive, limit: LIMIT, offset }) => {
     setLoading(true)
     setError(null)
     try {
@@ -47,7 +49,7 @@ export default function ProductsPage() {
   useEffect(() => {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offset, categoryId, status, expiration])
+  }, [offset, categoryId, status, expiration, isActive])
 
   const confirmDelete = async () => {
     if (!toDelete) return
@@ -55,8 +57,8 @@ export default function ProductsPage() {
     setError(null)
     setDeleting(true)
     try {
-      await deleteProduct(toDelete.id)
-      setNotice('Producto eliminado')
+      await deactivateProduct(toDelete.id)
+      setNotice('Producto desactivado; su ficha e historial se conservaron')
       setToDelete(null)
       load()
     } catch (e) {
@@ -76,11 +78,12 @@ export default function ProductsPage() {
     setCategoryId(undefined)
     setStatus(undefined)
     setExpiration(undefined)
+    setIsActive(undefined)
     setOffset(0)
-    load({ search: undefined, category_id: undefined, status: undefined, expiration: undefined, limit: LIMIT, offset: 0 })
+    load({ search: undefined, category_id: undefined, status: undefined, expiration: undefined, is_active: undefined, limit: LIMIT, offset: 0 })
   }
 
-  const hasFilters = Boolean(search || categoryId !== undefined || status || expiration)
+  const hasFilters = Boolean(search || categoryId !== undefined || status || expiration || isActive !== undefined)
 
   return (
     <div>
@@ -109,6 +112,9 @@ export default function ProductsPage() {
           <option value="vencido">Vencido</option>
           <option value="sin_fecha">Sin fecha</option>
         </select>
+        <select aria-label="Filtrar por disponibilidad" className="border rounded px-3 py-2" value={isActive === undefined ? '' : String(isActive)} onChange={(e) => { setOffset(0); setIsActive(e.target.value === '' ? undefined : e.target.value === 'true') }}>
+          <option value="">Activos e inactivos</option><option value="true">Activos</option><option value="false">Desactivados</option>
+        </select>
         <button className="border rounded px-4 py-2" onClick={searchNow}>Buscar</button>
         {hasFilters && <button className="border rounded px-4 py-2" onClick={clearFilters}>Limpiar filtros</button>}
       </div>
@@ -128,7 +134,7 @@ export default function ProductsPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-100 text-left">
               <tr>
-                <th className="p-3">Imagen</th><th className="p-3">SKU</th><th className="p-3">Nombre</th><th className="p-3">Cantidad</th><th className="p-3">Estado</th><th className="p-3">Vencimiento</th><th className="p-3"></th>
+                <th className="p-3">Imagen</th><th className="p-3">SKU</th><th className="p-3">Nombre</th><th className="p-3">Cantidad</th><th className="p-3">Estado</th><th className="p-3">Disponibilidad</th><th className="p-3">Vencimiento</th><th className="p-3"></th>
               </tr>
             </thead>
             <tbody>
@@ -138,15 +144,23 @@ export default function ProductsPage() {
                   <td className="p-3">{p.sku}</td>
                   <td className="p-3">{p.name}</td>
                   <td className="p-3">
-                    {p.quantity} {p.unit}
-                    {p.quantity <= p.min_stock && <span className="ml-2 px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">Stock bajo</span>}
+                    <div>{p.quantity} {p.unit}</div>
+                    <StockConditionBadge condition={p.stock_condition} />
                   </td>
                   <td className="p-3"><Badge status={p.status} /></td>
+                  <td className="p-3"><span className={p.is_active ? 'text-green-700' : 'text-gray-500'}>{p.is_active ? 'Activo' : 'Desactivado'}</span></td>
                   <td className="p-3"><ExpirationBadge status={p.expiration_status} /> {p.expiration_date ?? ''}</td>
                   <td className="p-3 flex gap-3">
                     <Link className="text-blue-600" to={`/productos/${p.id}`}>Ver</Link>
                     <Link className="text-gray-600" to={`/productos/${p.id}/editar`}>Editar</Link>
-                    <button className="text-red-600" onClick={() => setToDelete(p)}>Eliminar</button>
+                    <button
+                      className="text-orange-700 disabled:cursor-not-allowed disabled:text-gray-400"
+                      disabled={p.is_active === false}
+                      aria-label={p.is_active === false ? `Producto ${p.name} desactivado` : `Desactivar ${p.name}`}
+                      onClick={() => setToDelete(p)}
+                    >
+                      {p.is_active === false ? 'Desactivado' : 'Desactivar'}
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -158,12 +172,12 @@ export default function ProductsPage() {
       {data && <Pagination total={data.total} limit={LIMIT} offset={offset} onPage={setOffset} />}
 
       {toDelete && (
-        <Modal title="Eliminar producto" onClose={() => setToDelete(null)}>
-          <p className="mb-4">¿Seguro que deseas eliminar <strong>{toDelete.name}</strong>?</p>
+        <Modal title="Desactivar producto" onClose={() => setToDelete(null)}>
+          <p className="mb-4">¿Seguro que deseas desactivar <strong>{toDelete.name}</strong>? Seguirá apareciendo en el listado y conservará su ficha e historial, pero no se podrán registrar nuevos movimientos.</p>
           {error && <p role="alert" className="text-red-600 mb-3">{error}</p>}
           <div className="flex justify-end gap-3">
             <button className="border px-4 py-2 rounded" onClick={() => setToDelete(null)}>Cancelar</button>
-            <button disabled={deleting} className="bg-red-600 text-white px-4 py-2 rounded disabled:opacity-50" onClick={confirmDelete}>{deleting ? 'Eliminando…' : 'Eliminar'}</button>
+            <button disabled={deleting} className="bg-orange-700 text-white px-4 py-2 rounded disabled:opacity-50" onClick={confirmDelete}>{deleting ? 'Desactivando…' : 'Desactivar'}</button>
           </div>
         </Modal>
       )}

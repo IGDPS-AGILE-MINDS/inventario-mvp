@@ -12,6 +12,8 @@ from app.models.category import Category
 from app.models.supplier import Supplier
 from app.schemas.product import ProductCreate, ProductList, ProductRead, ProductUpdate
 from app.services.expiration import expiration_status, get_warning_days
+from app.services.stock_condition import get_stock_condition
+from app.services.stock_condition import get_stock_condition
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -19,6 +21,7 @@ router = APIRouter(prefix="/products", tags=["products"])
 def _with_expiration(session: Session, product: Product, warning_days: int) -> ProductRead:
     read = ProductRead.model_validate(product, from_attributes=True)
     read.expiration_status = expiration_status(product.expiration_date, warning_days)
+    read.stock_condition = get_stock_condition(product.quantity, product.min_stock)
     return read
 
 
@@ -28,6 +31,7 @@ def list_products(
     category_id: int | None = Query(default=None),
     status: ProductStatus | None = Query(default=None),
     expiration: str | None = Query(default=None),
+    is_active: bool | None = Query(default=None),
     limit: int = Query(default=10, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     session: Session = Depends(get_session),
@@ -44,6 +48,8 @@ def list_products(
         conditions.append(Product.category_id == category_id)
     if status is not None:
         conditions.append(Product.status == status)
+    if is_active is not None:
+        conditions.append(Product.is_active == is_active)
     if expiration is not None:
         today = date.today()
         limit_date = today + timedelta(days=warning_days)
@@ -73,6 +79,7 @@ def create_product(data: ProductCreate, session: Session = Depends(get_session))
     if data.supplier_id is not None and not session.get(Supplier, data.supplier_id):
         raise HTTPException(400, "El proveedor seleccionado no existe")
     product = Product.model_validate(data, update={
+        "status": ProductStatus.agotado.value if data.quantity == 0 else data.status.value,
         "purchase_price": data.purchase_price or 0,
         "weighted_average_cost": data.purchase_price if data.quantity > 0 else None,
     })
@@ -98,12 +105,15 @@ def get_product(product_id: int, session: Session = Depends(get_session)):
     return _with_expiration(session, product, get_warning_days(session))
 
 
-@router.put("/{product_id}", response_model=ProductRead)
+@router.put("/{product_id}", response_model=ProductRead, deprecated=True)
+@router.patch("/{product_id}", response_model=ProductRead)
 def update_product(product_id: int, data: ProductUpdate, session: Session = Depends(get_session)):
     product = session.get(Product, product_id)
     if not product:
         raise HTTPException(404, "Producto no encontrado")
     changes = data.model_dump(exclude_unset=True)
+    if not changes:
+        return _with_expiration(session, product)
     if changes.get("category_id") is not None and not session.get(Category, changes["category_id"]):
         raise HTTPException(400, "La categoría seleccionada no existe")
     if changes.get("supplier_id") is not None and not session.get(Supplier, changes["supplier_id"]):
@@ -121,14 +131,27 @@ def update_product(product_id: int, data: ProductUpdate, session: Session = Depe
     return _with_expiration(session, product, get_warning_days(session))
 
 
-@router.delete("/{product_id}", status_code=204)
-def delete_product(product_id: int, session: Session = Depends(get_session)):
+def _deactivate_product(product_id: int, session: Session) -> Product:
     product = session.get(Product, product_id)
     if not product:
         raise HTTPException(404, "Producto no encontrado")
-    session.delete(product)
-    try:
-        session.commit()
-    except IntegrityError:
-        session.rollback()
-        raise HTTPException(409, "No se puede eliminar el producto porque tiene movimientos asociados")
+    product.is_active = False
+    product.updated_at = utcnow()
+    session.add(product)
+    session.commit()
+    session.refresh(product)
+    return product
+
+
+@router.patch("/{product_id}/deactivate", response_model=ProductRead)
+def deactivate_product(product_id: int, session: Session = Depends(get_session)):
+    product = _deactivate_product(product_id, session)
+    return _with_expiration(session, product)
+
+
+@router.delete(
+    "/{product_id}", status_code=204,
+    description="Desactiva el producto y conserva su ficha y los movimientos asociados.",
+)
+def delete_product(product_id: int, session: Session = Depends(get_session)):
+    _deactivate_product(product_id, session)

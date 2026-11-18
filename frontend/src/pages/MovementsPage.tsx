@@ -144,7 +144,7 @@ export default function MovementsPage() {
             <label className="text-sm flex flex-col">Producto
               <select className="border rounded px-3 py-2 mt-1" value={productId} onChange={(e) => setProductId(e.target.value ? Number(e.target.value) : '')}>
                 <option value="">Selecciona...</option>
-                {products.map((p) => <option key={p.id} value={p.id}>{p.name} (stock: {p.quantity})</option>)}
+                {products.filter((p) => p.is_active).map((p) => <option key={p.id} value={p.id}>{p.name} (stock: {p.quantity})</option>)}
               </select>
             </label>
             <label className="text-sm flex flex-col">Operación
