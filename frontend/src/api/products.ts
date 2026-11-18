@@ -7,6 +7,7 @@ export async function getProducts(query: ProductQuery): Promise<Paginated<Produc
   if (query.category_id) params.category_id = query.category_id
   if (query.status) params.status = query.status
   if (query.expiration) params.expiration = query.expiration
+  if (query.is_active !== undefined) params.is_active = String(query.is_active)
   const { data } = await api.get<Paginated<Product>>('/products/', { params })
   return data
 }
@@ -16,19 +17,27 @@ export async function getProduct(id: number): Promise<Product> {
   return data
 }
 
-export type ProductInput = Omit<Product, 'id' | 'created_at' | 'updated_at' | 'weighted_average_cost' | 'expiration_status'>
-export type ProductCreateInput = Omit<ProductInput, 'purchase_price'> & { purchase_price: number | null }
+export type ProductEditableInput = Pick<Product,
+  'sku' | 'name' | 'description' | 'category_id' | 'supplier_id' | 'unit' |
+  'min_stock' | 'sale_price' | 'entry_date' | 'expiration_date' | 'location'
+>
+export type ProductCreateInput = ProductEditableInput & {
+  quantity: number
+  purchase_price: number | null
+  status: Product['status']
+}
 
 export async function createProduct(input: ProductCreateInput): Promise<Product> {
   const { data } = await api.post<Product>('/products/', input)
   return data
 }
 
-export async function updateProduct(id: number, input: Partial<ProductInput>): Promise<Product> {
-  const { data } = await api.put<Product>(`/products/${id}`, input)
+export async function updateProduct(id: number, input: Partial<ProductEditableInput>): Promise<Product> {
+  const { data } = await api.patch<Product>(`/products/${id}`, input)
   return data
 }
 
-export async function deleteProduct(id: number): Promise<void> {
-  await api.delete(`/products/${id}`)
+export async function deactivateProduct(id: number): Promise<Product> {
+  const { data } = await api.patch<Product>(`/products/${id}/deactivate`)
+  return data
 }

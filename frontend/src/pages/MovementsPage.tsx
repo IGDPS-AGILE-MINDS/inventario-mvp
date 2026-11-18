@@ -31,7 +31,7 @@ export default function MovementsPage() {
     try {
       const [movements, prods] = await Promise.all([
         getMovements({ movement_type: typeFilter, limit: LIMIT, offset }),
-        getProducts({ limit: 100, offset: 0 }),
+        getProducts({ is_active: true, limit: 100, offset: 0 }),
       ])
       setData(movements)
       setProducts(prods.items)

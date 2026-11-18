@@ -1,9 +1,10 @@
 from datetime import date, datetime
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import ConfigDict, Field, field_validator, model_validator
 from sqlmodel import SQLModel
 
 from app.models.product import ProductStatus
+from app.services.stock_condition import StockCondition
 
 
 class ProductCreate(SQLModel):
@@ -38,20 +39,19 @@ class ProductCreate(SQLModel):
 
 
 class ProductUpdate(SQLModel):
+    model_config = ConfigDict(extra="forbid")
+
     sku: str = Field(default=None, min_length=1, max_length=60)
     name: str = Field(default=None, min_length=1, max_length=160)
     description: str | None = Field(default=None, max_length=1000)
     category_id: int | None = Field(default=None, ge=1)
     supplier_id: int | None = Field(default=None, ge=1)
-    quantity: int = Field(default=None, ge=0)
     unit: str = Field(default=None, min_length=1, max_length=30)
     min_stock: int = Field(default=None, ge=0)
-    purchase_price: float = Field(default=None, ge=0)
     sale_price: float = Field(default=None, ge=0)
     entry_date: date = None
     expiration_date: date | None = None
     location: str | None = Field(default=None, max_length=120)
-    status: ProductStatus = None
 
     @field_validator("sku", "name")
     @classmethod
@@ -79,6 +79,8 @@ class ProductRead(SQLModel):
     expiration_date: date | None
     location: str | None
     status: ProductStatus
+    is_active: bool
+    stock_condition: StockCondition = StockCondition.normal
     created_at: datetime
     updated_at: datetime
     expiration_status: str = "sin_fecha"

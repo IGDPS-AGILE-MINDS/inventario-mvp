@@ -18,6 +18,7 @@ export interface Supplier {
 }
 
 export type ProductStatus = 'vigente' | 'proximo_a_vencer' | 'vencido' | 'agotado'
+export type StockCondition = 'agotado' | 'stock_bajo' | 'normal'
 
 export interface Product {
   id: number
@@ -36,6 +37,8 @@ export interface Product {
   expiration_date: string | null
   location: string | null
   status: ProductStatus
+  is_active: boolean
+  stock_condition: StockCondition
   expiration_status: 'vigente' | 'proximo_a_vencer' | 'vencido' | 'sin_fecha'
   created_at: string
   updated_at: string
@@ -53,6 +56,7 @@ export interface ProductQuery {
   category_id?: number
   status?: ProductStatus
   expiration?: string
+  is_active?: boolean
   limit: number
   offset: number
 }

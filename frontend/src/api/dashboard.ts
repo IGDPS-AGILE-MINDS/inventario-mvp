@@ -13,6 +13,7 @@ export interface DashboardSummary {
   total_products: number
   total_units: number
   low_stock: number
+  out_of_stock: number
   expiring_soon: number
   expired: number
   last_movements: MovementSummary[]
