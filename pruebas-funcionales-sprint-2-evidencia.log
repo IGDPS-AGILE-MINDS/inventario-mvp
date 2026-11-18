@@ -1,0 +1,92 @@
+ Container inventarioproyect-backend-run-c866c5337b57 Creating 
+ Container inventarioproyect-backend-run-c866c5337b57 Created 
+== US006 ==
+[OK ] 006-01 valores iniciales registrados :: q=12 cppm=2800.0 min=5
+[OK ] 006-01 edición parcial cambia solo campos enviados :: code=200 desc='Leche entera 1 litro' venta=3500.0
+[OK ] 006-01 campos omitidos conservan valores (q=12, CPPM=2800, costo compra=2800) :: q=12 cppm=2800.0 compra=2800.0
+[OK ] 006-01 la edición no genera movimiento de inventario :: movimientos=0
+[OK ] 006-01 validación US005 en edición: cantidad negativa rechazada :: code=422
+[OK ] 006-01 validación US005 en edición: precio negativo rechazado :: code=422
+[NOTA] 006-01 control transversal recomendado NO aplicado: PUT quantity directo aceptado (q 12→99) sin generar movimiento; se restaura a 12
+[OK ] 006-02 borrado físico bloqueado con movimientos asociados :: code=409 detail=No se puede eliminar el producto porque tiene movimientos asociados
+[XX ] 006-02 desactivación disponible como alternativa segura :: code=422 detail=[{'type': 'enum', 'loc': ['body', 'status'], 'msg': "Input should be 'vigente', 'proximo_a_vencer', 'vencido' or 'agotado'", 'input': 'inactivo', 'ctx': {'expected': "'vigente', 'proximo_a_vencer', 'vencido' or 'agotado'"}}] (no existe estado inactivo ni endpoint de desactivación)
+[OK ] 006-02 ficha e historial siguen consultables tras intento de borrado :: hist=1 en_catálogo=1
+[OK ] 006-02 ID inexistente → error comprensible (404) :: code=404 detail=Producto no encontrado
+[OK ] 006-02 DELETE inexistente → 404 sin afectar otros registros :: code=404 LEC-001 q=12
+== US014 ==
+[OK ] 014-01 Escenario A: stock 10→20 y CPPM 5.000→6.000 :: code=201 q=20 cppm=6000.0
+[OK ] 014-01 Escenario A: movimiento conserva costo de adquisición 7.000 :: unit=7000.0 10→20 motivo=entrada_compra
+[OK ] 014-01 Escenario B: primera entrada 6@4.500 → stock 6 y CPPM 4.500 :: code=201 q=6 cppm=4500.0 unit=4500.0
+[OK ] 014-02 rechazo por cantidad 0 :: code=422 esperado=422
+[OK ] 014-02 rechazo por cantidad negativa :: code=422 esperado=422
+[OK ] 014-02 rechazo por costo unitario negativo :: code=422 esperado=422
+[OK ] 014-02 rechazo por producto inexistente :: code=404 esperado=404
+[OK ] 014-02 sin cambios de stock/CPPM/historial tras rechazos :: q=10 cppm=5000.0 movs=0
+[OK ] 014-02 fallo controlado durante la persistencia (entero fuera de rango de la base) → 500 :: code=500
+[OK ] 014-02 rollback completo: sin stock, CPPM ni movimiento parcial tras el fallo :: q=10 cppm=5000.0 movs=0
+== US015 ==
+[OK ] 015-01 salida 3 de 20 → stock 17 :: code=201 q=17
+[OK ] 015-01 CPPM permanece en 6.000 (la salida no recalcula) :: cppm=6000.0
+[OK ] 015-01 movimiento conserva costo unitario 6.000 y total 18.000 :: unit=6000.0 total=18000.0 motivo=consumo
+[OK ] 015-02 rechazo por cantidad 0 :: code=422 esperado=422 detail=[{'type': 'greater_than', 'loc': ['body', 'quantity'], 'msg': 'Input s
+[OK ] 015-02 rechazo por cantidad negativa :: code=422 esperado=422 detail=[{'type': 'greater_than', 'loc': ['body', 'quantity'], 'msg': 'Input s
+[OK ] 015-02 rechazo por cantidad superior al stock :: code=400 esperado=400 detail=Stock insuficiente: disponible 10, solicitado 999
+[OK ] 015-02 rechazo de salida sin CPPM válido :: code=400 detail=No se puede registrar la salida: el producto no tiene costo promedio ponderado
+[OK ] 015-02 stock/CPPM/historial intactos tras los rechazos :: q=10 cppm=4000.0 movs=0
+[BLOCKED] 015-02 paso 3 — fallo controlado durante el guardado de una salida: no inyectable por API (la cantidad válida queda acotada por el stock y el servicio no expone puntos de falla alcanzables; a diferencia de entradas, el entero enorme no llega a la base). Los rechazos por validación sí quedaron verificados.
+== US016 ==
+[OK ] 016-01 historial presenta fecha, producto, tipo, cantidad, stock anterior y nuevo :: n=4 movimientos
+[OK ] 016-01 orden del más reciente al más antiguo :: reciente=2026-11-18T01:56:53 antiguo=2026-11-18T01:56:53
+[OK ] 016-01 filtro por producto devuelve solo ese producto :: total=1 producto=SAL-001
+[OK ] 016-01 filtro por tipo IN/OUT devuelve solo ese tipo :: IN=3 OUT=1
+[NOTA] 016-01 vínculo movimiento↔venta: no aplica — US042 (ventas) no está implementada en el MVP
+[OK ] 016-02 salida conserva CPPM aplicado 6.000 y costo total 12.000 :: unit=6000.0 total=12000.0
+[OK ] 016-02 entrada posterior: CPPM sube a 6.500 y conserva costo 8.000/48.000 :: cppm=6500.0 unit=8000.0 total=48000.0
+[OK ] 016-02 la entrada no reescribe el costo histórico de la salida :: unit=6000.0 total=12000.0
+[OK ] 016-02 actualización conserva movimientos; borrado bloqueado (409) sin alterar historial :: PUT=200 DELETE=409 movs=2
+[NOTA] 016-02 el paso 'desactivar' se ejecutó como actualización (DoD: 'actualización O desactivación'); no existe funcionalidad de desactivación en el MVP (mismo hallazgo que 006-02)
+== US018 ==
+[OK ] 018-01 cantidad 0 por agotamiento → estado 'agotado' :: status=agotado q=0
+[XX ] 018-01 cantidad 0 por creación directa → estado 'agotado' (DoD quantity=0 ⇒ agotado) :: status=vigente q=0 (esperado agotado)
+[OK ] 018-01 límite q=5 (≤ mín. 5) → alerta stock bajo según regla de la UI :: q=5 min=5
+[OK ] 018-01 límite q=6 (> mín. 5) → sin alerta de stock bajo :: q=6 min=5
+[OK ] 018-01 dashboard refleja el número correcto de productos con stock bajo :: dashboard=3 calculado=3
+[NOTA] 018-01 comunicación con texto además de color: badge 'Stock bajo' (ProductsPage) y etiquetas Vigente/Próximo a vencer/Vencido/Agotado (Badge.tsx) — verificado en frontend/src
+[OK ] 018-02 A: 6→5 queda en stock bajo sin sobrescribir su estado :: q=5 status=vigente
+[OK ] 018-02 B: 1→0 queda agotado :: q=0 status=agotado
+[OK ] 018-02 indicador del dashboard coincide con los productos bajo mínimo :: dashboard=5 calculado=5
+[XX ] 018-02 estado administrativo inactivo disponible y no sobrescrito por el indicador (DoD) :: code=422 detail=[{'type': 'enum', 'loc': ['body', 'status'], 'msg': "Input should be 'vigente', 'proximo_a_vencer', 'vencido' or 'agotado'", 'input': 'inactivo', 'ctx': {'expected': "'vigente', 'proximo_a_vencer', 'vencido' or 'agotado'"}}] (el modelo ProductStatus no define estado administrativo inactivo)
+== US019 ==
+[OK ] 019-01 umbral inicial de aviso = 30 días :: umbral=30
+[OK ] 019-01 clasificación de vencimiento T-1 (fecha 2026-11-17) :: esperado=vencido obtenido=vencido
+[OK ] 019-01 clasificación de vencimiento T (fecha 2026-11-18) :: esperado=proximo_a_vencer obtenido=proximo_a_vencer
+[OK ] 019-01 clasificación de vencimiento T+10 (fecha 2026-11-28) :: esperado=proximo_a_vencer obtenido=proximo_a_vencer
+[OK ] 019-01 clasificación de vencimiento T+30 (fecha 2026-12-18) :: esperado=proximo_a_vencer obtenido=proximo_a_vencer
+[OK ] 019-01 clasificación de vencimiento T+31 (fecha 2026-12-19) :: esperado=vigente obtenido=vigente
+[OK ] 019-01 clasificación de vencimiento sin fecha (fecha None) :: esperado=sin_fecha obtenido=sin_fecha
+[NOTA] 019-01 reloj de prueba T→T+1 sustituido por fechas relativas a hoy: D=hoy⇒próximo y D=ayer⇒vencido cubren la transición de día siguiente sin manipular el reloj del sistema
+[OK ] 019-02 producto A (qty 0, próximo) conserva ficha, fecha y estado calculado :: q=0 est=proximo_a_vencer fecha=2026-11-23
+[OK ] 019-02 producto B (qty 3, próximo) aparece con su estado :: q=3 est=proximo_a_vencer
+[XX ] 019-02 panel/dashboard de vencimientos activos excluye productos con cantidad 0 :: expiring_soon=5 esperado=4 (solo qty>0); el dashboard cuenta por fecha, sin filtrar cantidad 0
+[NOTA] 019-02 etiqueta textual además de color: ExpirationBadge renderiza 'Vigente/Próximo a vencer/Vencido/Sin fecha' con colores — verificado en frontend/src (sin navegador)
+== US021 ==
+[OK ] 021-01 filtro 'vencido' muestra únicamente productos de su estado :: total=1 erroneos=[]
+[OK ] 021-01 filtro 'proximo_a_vencer' muestra únicamente productos de su estado :: total=5 erroneos=[]
+[OK ] 021-01 filtro 'vigente' muestra únicamente productos de su estado :: total=1 erroneos=[]
+[OK ] 021-01 filtro 'sin_fecha' muestra únicamente productos de su estado :: total=16 erroneos=[]
+[OK ] 021-01 limpiar el filtro restablece el listado general (sin parámetro) :: listado=23 productos=23
+[OK ] 021-01 limpiar filtros no modifica productos ni inventario :: productos=23 unidades=144
+[OK ] 021-02 valor inicial de expiration_warning_days = 30 :: valor=30
+[OK ] 021-02 se aceptan los límites 0 y 365 :: code 0→200, 365→200
+[OK ] 021-02 se rechazan -1 y 366 con mensaje comprensible en español :: code=422/422 msg='[{'type': 'value_error', 'loc': ['body', 'expiration_warning_days'], 'msg': 'Value error, '
+[OK ] 021-02 los intentos inválidos no sobrescriben la última configuración válida (365) :: valor=365
+[OK ] 021-02 el valor válido persiste en una nueva petición (recarga de la aplicación) :: valor=365
+[OK ] 021-02 el umbral guardado se usa en US019: con 365, T+31 pasa a 'próximo a vencer' :: status=proximo_a_vencer
+[OK ] 021-02 restaurar 30 → T+31 vuelve a 'vigente' (valor inicial recuperado) :: status=vigente
+[NOTA] 021-02 UI: SettingsPage muestra éxito solo tras guardar correctamente y error en fallo, sin presentar como guardada una configuración fallida — verificado en frontend/src
+== RESUMEN ==
+aserciones=69 discrepancias=4
+FALLO :: 006-02 | desactivación disponible como alternativa segura | code=422 detail=[{'type': 'enum', 'loc': ['body', 'status'], 'msg': "Input should be 'vigente', 'proximo_a_vencer', 'vencido' or 'agotado'", 'input': 'inactivo', 'ctx': {'expected': "'vigente', 'proximo_a_vencer', 'vencido' or 'agotado'"}}] (no existe estado inactivo ni endpoint de desactivación)
+FALLO :: 018-01 | cantidad 0 por creación directa → estado 'agotado' (DoD quantity=0 ⇒ agotado) | status=vigente q=0 (esperado agotado)
+FALLO :: 018-02 | estado administrativo inactivo disponible y no sobrescrito por el indicador (DoD) | code=422 detail=[{'type': 'enum', 'loc': ['body', 'status'], 'msg': "Input should be 'vigente', 'proximo_a_vencer', 'vencido' or 'agotado'", 'input': 'inactivo', 'ctx': {'expected': "'vigente', 'proximo_a_vencer', 'vencido' or 'agotado'"}}] (el modelo ProductStatus no define estado administrativo inactivo)
+FALLO :: 019-02 | panel/dashboard de vencimientos activos excluye productos con cantidad 0 | expiring_soon=5 esperado=4 (solo qty>0); el dashboard cuenta por fecha, sin filtrar cantidad 0
