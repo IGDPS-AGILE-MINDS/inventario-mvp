@@ -12,6 +12,7 @@ export default function MovementsPage() {
   const [data, setData] = useState<MovementList | null>(null)
   const [products, setProducts] = useState<Product[]>([])
   const [typeFilter, setTypeFilter] = useState<MovementType | undefined>()
+  const [productFilter, setProductFilter] = useState<number | undefined>()
   const [offset, setOffset] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -30,7 +31,7 @@ export default function MovementsPage() {
     setError(null)
     try {
       const [movements, prods] = await Promise.all([
-        getMovements({ movement_type: typeFilter, limit: LIMIT, offset }),
+        getMovements({ product_id: productFilter, movement_type: typeFilter, limit: LIMIT, offset }),
         getProducts({ limit: 100, offset: 0 }),
       ])
       setData(movements)
@@ -42,7 +43,7 @@ export default function MovementsPage() {
     }
   }
 
-  useEffect(() => { load() }, [offset, typeFilter])
+  useEffect(() => { load() }, [offset, typeFilter, productFilter])
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -75,9 +76,26 @@ export default function MovementsPage() {
         <button className="bg-blue-600 text-white px-4 py-2 rounded" onClick={() => setShowForm(true)}>Registrar movimiento</button>
       </div>
 
-      <div className="mb-4">
-        <select className="border rounded px-3 py-2" value={typeFilter ?? ''} onChange={(e) => { setOffset(0); setTypeFilter((e.target.value || undefined) as MovementType | undefined) }}>
-          <option value="">Todos</option>
+      <div className="flex flex-wrap gap-3 mb-4">
+        <select
+          aria-label="Filtrar por producto"
+          className="border rounded px-3 py-2"
+          value={productFilter ?? ''}
+          onChange={(e) => { setOffset(0); setProductFilter(e.target.value ? Number(e.target.value) : undefined) }}
+        >
+          <option value="">Todos los productos</option>
+          {products.map((p) => (
+            <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>
+          ))}
+        </select>
+
+        <select
+          aria-label="Filtrar por tipo"
+          className="border rounded px-3 py-2"
+          value={typeFilter ?? ''}
+          onChange={(e) => { setOffset(0); setTypeFilter((e.target.value || undefined) as MovementType | undefined) }}
+        >
+          <option value="">Todos los tipos</option>
           <option value="IN">Entradas</option>
           <option value="OUT">Salidas</option>
         </select>
